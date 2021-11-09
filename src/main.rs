@@ -1,4 +1,5 @@
 extern crate pnet;
+extern crate pnet_macros_support;
 
 use pnet::datalink::{self, NetworkInterface};
 
@@ -19,229 +20,9 @@ use std::io::{self, Write};
 use std::net::IpAddr;
 use std::process;
 
-fn handle_modbus(packet: &[u8], r_flag: bool) {
-    let fc = packet[0];
-    print!("Function Code: {} ", fc);
-    match fc {
-        1 => {
-            if r_flag {
-                let byc = packet[1];
-                println!("Read Coil Status Respons");
-                println!("Byte Count: {}", byc);
-                for i in 0 .. byc {
-                    println!("data{}~{}: {:08b}"
-                        ,i * 8, i * 8 + 7, packet[(2 + i) as usize]);
-                }
-            } else {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let bic = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Read Coil Status");
-                println!("Reference Number: {}", rn);
-                println!("Bit Count: {}", bic);
-            }
-        },
-        2 => {
-            if r_flag {
-                let byc = packet[1];
-                println!("Read Input Status Respons");
-                println!("Byte Count: {}", byc);
-                for i in 0 .. byc {
-                    println!("data{}~{}: {:08b}"
-                        ,i * 8, i * 8 + 7, packet[(2 + i) as usize]);
-                }
-            } else {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let bic = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Read Input Status");
-                println!("Reference Number: {}", rn);
-                println!("Bit Count: {}", bic);
-            }
-        },
-        3 => {
-            if r_flag {
-                let byc = packet[1];
-                println!("Read Holding Register Respons");
-                println!("Byte Count: {}", byc);
-                for i in 0 .. (byc / 2 - 1){
-                    println!("data{} : {},", i,
-                      ((packet[(i * 2 + 2) as usize] as u16) << 8)
-                     + (packet[(i * 2 + 3) as usize] as u16));
-                }
-            } else {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let bic = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Read Holding Register");
-                println!("Reference Number: {}", rn);
-                println!("Bit Count: {}", bic);
-            }
-        },
-        4 => {
-            if r_flag {
-                let byc = packet[1];
-                println!("Read Input Register Respons");
-                println!("Byte Count: {}", byc);
-                for i in 0 .. (byc / 2 - 1){
-                    println!("data{} : {},", i, 
-                      ((packet[(i * 2 + 2) as usize] as u16) << 8)
-                     + (packet[(i * 2 + 3) as usize] as u16));
-                }
-            } else {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let bic = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Read Input Register");
-                println!("Reference Number: {}", rn);
-                println!("Bit Count: {}", bic);
-            }
-        },
-        5 => {
-            if r_flag {
-                let n = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let cd = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Force Single Coil Respons");
-                println!("Number: {}", n);
-                println!("Change Data: {}", cd);
-            } else {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let cd = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Force Single Coil");
-                println!("Reference Number: {}", rn);
-                println!("Change Data: {}", cd);
-            }
-        },
-        6 => {
-            if r_flag {
-                let n = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let cd = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Preset Single Register Respons");
-                println!("Number: {}", n);
-                println!("Change Data: {}", cd);
-            } else {
-                let n = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let cd = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Preset Single Register");
-                println!("Number: {}", n);
-                println!("Change Data: {}", cd);
-            }
-        },
-        8 => {
-            if r_flag {
-                let sc = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let d = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Diagnostics Respons");
-                println!("sub coder: {}", sc);
-                println!("Data: {}", d);
-            } else {
-                let sc = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let d = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Diagnostics");
-                println!("sub code: {}", sc);
-                println!("Data: {}", d);
-            }
-        },
-        11 => {
-            if r_flag {
-                let s = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let ec = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Fetch Communication Event Counter Respons");
-                println!("Status: {}", s);
-                println!("Event Counter: {}", ec);
-            } else {
-                println!("Fetch Communication Event Counter");
-            }
-        },
-        12 => {
-            if r_flag {
-                let byc = packet [1];
-                let s = ((packet[2] as u16) << 8) + (packet[3] as u16);
-                let ec = ((packet[4] as u16) << 8) + (packet[5] as u16);
-                let mc = ((packet[6] as u16) << 8) + (packet[7] as u16);
-                println!("Fetch Communication Event Log Respons");
-                println!("Byte Count: {}", byc);
-                println!("Status: {}", s);
-                println!("Event Counter: {}", ec);
-                println!("Message Counter: {}", mc);
-                for i in 8 .. packet.len(){
-                    println!("event{}: {}", i - 8, packet[i]);
-                }
-            } else {
-                println!("Fetch Communication Event Log");
-            }
-        },
-        15 => {
-            if r_flag {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let bic = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Write Multiple Coils Respons");
-                println!("Reference Number: {}", rn);
-                println!("Bit Count: {}", bic);
-            } else {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let bic = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                let byc = packet[5];
-                let mut data : usize= 0;
-                for i in 6..(byc + 6) {
-                    data = (data << 8) + (packet[i as usize] as usize);
-                }
-                println!("Write Multiple Coils");
-                println!("Reference Number: {}", rn);
-                println!("Bit Count: {}", bic);
-                println!("Byte Count: {}", byc);
-                println!("Data: {}", data);
-            }
-        },
-        16 => {
-            if r_flag {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let rc = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                println!("Preset Multiple Registers Respons");
-                println!("Reference Number: {}", rn);
-                println!("Registers Count: {}", rc);
-            } else {
-                let rn = ((packet[1] as u16) << 8) + (packet[2] as u16);
-                let rc = ((packet[3] as u16) << 8) + (packet[4] as u16);
-                let byc = packet[5];
-                println!("Preset Multiple Registers");
-                println!("Reference Number: {}", rn);
-                println!("Registers Count: {}", rc);
-                for i in 0 .. (byc / 2 - 1){
-                    println!("Change Data{} : {},", i + 1,
-                      ((packet[(i * 2 + 6) as usize] as u16) << 8)
-                     + (packet[(i * 2 + 7) as usize] as u16));
-                }
-            }
-        },
-        17 => {
-            if r_flag {
-                println!("Report Slave ID Respons");
-            } else {
-                println!("Report Slave ID");
-            }
-
-        },
-        _ => {
-            println!("error function");
-        },
-    }
-    for p in packet.iter() {
-        print!("{:02x} ", p);
-    }
-    println!();
-}
-
-fn handle_modbus_tcp(packet: &[u8], r_flag: bool) {
-    let ti = ((packet[0] as u16) << 8) + (packet[1] as u16);
-    let pi = ((packet[2] as u16) << 8) + (packet[3] as u16);
-    let l  = ((packet[4] as u16) << 8) + (packet[5] as u16);
-    let ui = packet[6];
-    let ad = packet[7];
-    println!("Transaction Identifier: {}", ti);
-    println!("Protocol Identifier: {}", pi);
-    println!("Length: {}", l);
-    println!("Unit Identifier: {}", ui);
-    println!("address: {}", ad);
-    let end = packet.len();
-    handle_modbus(&packet[7 .. end], r_flag);
-}
+mod packet;
+//use packet::modbus_tcp::{ModbusTCPPacket, FunctionFieldValues};
+use packet::modbus_tcp::*;
 
 fn handle_udp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, packet: &[u8]) {
     let udp = UdpPacket::new(packet);
@@ -327,15 +108,248 @@ fn handle_tcp_packet(interface_name: &str, source: IpAddr, destination: IpAddr, 
             tcp.get_destination(),
             packet.len()
         );
-        let r_flag;
-        if tcp.get_destination() == 502 {
-            r_flag = false;
-        } else {
-            r_flag = true;
-        }
-        if tcp.payload().len() > 0{
-            handle_modbus_tcp(tcp.payload(), r_flag);
-        }
+        let modbus_tcp = ModbusTCPPacket::new(tcp.payload());
+        if let Some(modbus_tcp) = modbus_tcp{
+            match (tcp.get_source(), tcp.get_destination()) {
+                ( _ , 502 ) => { /* (送信元, 送信先) Request */
+                    match modbus_tcp.get_function() {
+                        FunctionFieldValues::ReadCoilStatus => {
+                            let m_packet = read_coil_status::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    read coil status({}) Request, Reference Number: {}, Bit Count: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_bit_count()
+                            );
+                        }
+                        FunctionFieldValues::ReadInputStatus => {
+                            let m_packet = read_input_status::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    read input status({}) Request, Reference Number: {}, Bit Count: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_bit_count()
+                            );
+                        }
+                        FunctionFieldValues::ReadHoldingRegister => {
+                            let m_packet = read_holding_register::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    read holding register({}) Request, Reference Number: {}, Bit Count: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_bit_count()
+                            );
+                        }
+                        FunctionFieldValues::ReadInputRegister => {
+                            let m_packet = read_input_register::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    read input register({}) Request, Reference Number: {}, Bit Count: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_bit_count()
+                            );
+                        }
+                        FunctionFieldValues::ForceSingleCoil => {
+                            let m_packet = force_single_coil::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    force single coil({}) Request, Reference Number: {}, Data: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::PresetSingleRegister => {
+                            let m_packet = preset_single_register::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    preset singe register({}) Request, Reference Number: {}, Data: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::Diagnostics => {
+                            let m_packet = diagnostics::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    diagnostics({}) Request, sub code: {}, Data: {}",
+                                m_packet.get_function(),
+                                m_packet.get_sub_code(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::FetchCommunicationEventCounter  => {
+                            let m_packet = fetch_communication_event_counter::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    fetch conmmunication event counter({}) Request,",
+                                m_packet.get_function(),
+                            );
+                        }
+                        FunctionFieldValues::FetchCommunicationEventCounterLog  => {
+                            let m_packet = fetch_communication_event_counter_log::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    fetch conmmunication event counter log({}) Request,",
+                                m_packet.get_function(),
+                            );
+                        }
+                        FunctionFieldValues::ForceMultipleCoils => {
+                            let m_packet = force_multiple_coils::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    force multiple coils({}) Request, Reference Number: {}, Register Count: {}, Byte Count: {}, data: {:?}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_register_count(),
+                                m_packet.get_byte_count(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::PresetMultipleRegisters => {
+                            let m_packet = preset_multiple_registers::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    preset multiple registers({}) Request, Reference Number: {}, Register Count: {}, Byte Count: {}, data: {:?}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_register_count(),
+                                m_packet.get_byte_count(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::ReportSlaveID  => {
+                            let m_packet = report_slave_id::request::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    freport_slave_id({}) Request,",
+                                m_packet.get_function(),
+                            );
+                        }
+                        _ => {
+                            println!(
+                                "unknown function number for {:?} request",
+                                modbus_tcp.get_function()
+                            );
+                        }
+                    }
+                }
+                ( 502 , _ ) => { /* (送信元, 送信先) Reply */
+                    match modbus_tcp.get_function() {
+                        FunctionFieldValues::ReadCoilStatus => {
+                            let m_packet = read_coil_status::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    read coil status({}) Reply, Byte Count: {}, Data: {:?}",
+                                m_packet.get_function(),
+                                m_packet.get_byte_count(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::ReadInputStatus => {
+                            let m_packet = read_input_status::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    read input status({}) Reply, Byte Count: {}, Data: {:?}",
+                                m_packet.get_function(),
+                                m_packet.get_byte_count(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::ReadHoldingRegister => {
+                            let m_packet = read_holding_register::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    read holding register({}) Reply, Byte Count: {}, Data: {:?}",
+                                m_packet.get_function(),
+                                m_packet.get_byte_count(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::ReadInputRegister => {
+                            let m_packet = read_input_register::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    read input register({}) Reply, Byte Count: {}, Data: {:?}",
+                                m_packet.get_function(),
+                                m_packet.get_byte_count(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::ForceSingleCoil => {
+                            let m_packet = force_single_coil::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    force single coil({}) Reply, Reference Number: {}, Data: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::PresetSingleRegister => {
+                            let m_packet = preset_single_register::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    preset singe register({}) Reply, Reference Number: {}, Data: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::Diagnostics => {
+                            let m_packet = diagnostics::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    diagnostics({}) Reply, sub code: {}, Data: {}",
+                                m_packet.get_function(),
+                                m_packet.get_sub_code(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::FetchCommunicationEventCounter  => {
+                            let m_packet = fetch_communication_event_counter::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    fetch conmmunication event counter({}) Reply, status: {}, event counter: {}",
+                                m_packet.get_function(),
+                                m_packet.get_status(),
+                                m_packet.get_event_counter()
+                            );
+                        }
+                        FunctionFieldValues::FetchCommunicationEventCounterLog  => {
+                            let m_packet = fetch_communication_event_counter_log::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    fetch conmmunication event counter log({}) Reply, byte count: {}, status: {}, event counter: {}, message counter: {}, event: {:?}",
+                                m_packet.get_function(),
+                                m_packet.get_byte_count(),
+                                m_packet.get_status(),
+                                m_packet.get_event_counter(),
+                                m_packet.get_message_counter(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::ForceMultipleCoils => {
+                            let m_packet = force_multiple_coils::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    force multiple coils({}) Reply, Reference Number: {}, data: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::PresetMultipleRegisters => {
+                            let m_packet = preset_multiple_registers::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    preset multiple registers({}) Reply, Reference Number: {}, data: {}",
+                                m_packet.get_function(),
+                                m_packet.get_reference_number(),
+                                m_packet.get_data()
+                            );
+                        }
+                        FunctionFieldValues::ReportSlaveID  => {
+                            let m_packet = report_slave_id::reply::ModbusPacket::new(tcp.payload()).unwrap();
+                            println!(
+                                "    freport_slave_id({}) Reply, payload: {:?}",
+                                m_packet.get_function(),
+                                m_packet.payload()
+                            );
+                        }
+                        _ => {
+                            println!(
+                                "unknown function number for {:?} reply",
+                                modbus_tcp.get_function()
+                            );
+                        }
+                    }
+                }
+                ( _ , _ ) => { /* ModbusTCP以外の通信 */ }
+            }
+        } else { /* ModbusTCPの形式に当てはまらなかったパケット */ }
     } else {
         println!("[{}]: Malformed TCP Packet", interface_name);
     }

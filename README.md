@@ -1,12 +1,15 @@
 # packetdump_Modbus
 
-次のgithubのコードを参考に、handle_modbus_tcp関数とhandle_modbus関数を
-追加してModbusパケットを解析できるようにした。
+次のgithubのコードを参考に、Modbusパケットを解析できるようにした。
 https://github.com/libpnet/libpnet/blob/master/examples/packetdump.rs
 
-今回、対象としているのはModbus/TCPであるため、handle_tcp_packet関数の中に、
-送信元、送信先のポート番号が502番であり、payloadがある場合にModbusパケットの
-解析を行なっている。
+https://github.com/libpnet/libpnet/blob/master/docs/using_packet.md
+上のURLのYour Own Projectの項目に沿った形でModbusTCPを解析する様に作成を改修した。
+502番ボートが送信元か送信先に含まれている場合に、ModbusTCPの解析を行い、
+ファンクションコードの種類と送信元パケットか送信先パケットのどちらであるのかによって
+処理を行なっている。
 
 test_dataのファイルの中のpcapファイルをTcpReplayを用いて再送することで動作確認を
 行なった。
+
+
