@@ -43,6 +43,8 @@ name = "packetdump"
 version = "0.1.0"
 dependencies = [
  "pnet",
+ "pnet_macros",
+ "pnet_macros_support",
 ]
 
 [[package]]
